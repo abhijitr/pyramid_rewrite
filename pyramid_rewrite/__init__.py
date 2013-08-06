@@ -43,7 +43,7 @@ def includeme(config):
 
 
 # Configuration directive for adding a rewrite rule
-def add_rewrite_rule(config, pattern, target):
+def add_rewrite_rule(config, pattern, target, redirect=None):
     tpattern = pattern
     if not pattern.startswith(r'^'):
         tpattern = '^' + tpattern
@@ -52,7 +52,7 @@ def add_rewrite_rule(config, pattern, target):
     cpattern = re.compile(tpattern)
     if not hasattr(config.registry, 'rewrite_rules'):
         config.registry.rewrite_rules = []
-    config.registry.rewrite_rules.append((pattern, cpattern, target))
+    config.registry.rewrite_rules.append((pattern, cpattern, target, redirect))
 
 # Tween to perform URL rewriting before a request is handled by Pyramid
 def rewrite_tween_factory(handler, registry):
@@ -61,7 +61,7 @@ def rewrite_tween_factory(handler, registry):
         return handler
 
     def rewrite_tween(request):
-        for pattern, cpattern, target in request.registry.rewrite_rules:
+        for pattern, cpattern, target, redirect in request.registry.rewrite_rules:
             path_info = request.path_info
             logger.debug('Matching pattern "%s" against "%s" ' \
                         % (pattern, path_info))
@@ -71,6 +71,9 @@ def rewrite_tween_factory(handler, registry):
                 logger.debug('Rewriting url: %s --> %s' \
                             % (request.path_info, path_info))
                 request.path_info = path_info
+                if redirect:
+                    return redirect(request.url)
+                    
         return handler(request)
 
     return rewrite_tween
